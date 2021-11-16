@@ -33,13 +33,13 @@ import sys
 
 # rospy.init_node('door_path_planner', argv=sys.argv)
 
-robot_control = MoveRobot("1", "1", "2", "door_path.csv")
+robot_control = MoveRobot("1", "1", "2", "door_path2.csv")
 
 R = 0.2365 # m, raduis of the circle
 
 angle = (180 + 28.81) * pi / 180
 angle_of_approach = 28.81 * pi /180
-angle_step = 10 * pi / 180
+angle_step = 5 * pi / 180
 
 listener = tf.TransformListener()
 while True:
@@ -54,8 +54,8 @@ angle_shift = 0
 new_pose_mat = np.zeros((4,4))
 ee_motion = tf.TransformBroadcaster()
 rate = rospy.Rate(10.0)
-# while angle >= (90 * pi / 180):
-while True:
+while angle_shift >= -pi/2:
+# while True:
 # while not rospy.is_shutdown:
     x_pos = R * cos(angle)
     z_pos = R * sin(angle)
@@ -63,15 +63,16 @@ while True:
     new_pose_mat = np.dot(robot_base_door_mat, tf.transformations.translation_matrix([x_pos,0,z_pos,1]))
     ee_trans = tf.transformations.translation_from_matrix(new_pose_mat)
     
-    # ee_rot = tf.transformations.quaternion_from_matrix(np.dot(new_pose_mat, rot_mat))
+    ee_rot = tf.transformations.quaternion_from_matrix(np.dot(new_pose_mat, rot_mat))
     
-    ee_rot = tf.transformations.quaternion_from_matrix(new_pose_mat)
+    # ee_rot = tf.transformations.quaternion_from_matrix(new_pose_mat)
     
     # ee_rot = tf.transformations.quaternion_from_euler(0,((90 - angle) * pi / 180),0
     # ee_rot = tf.transformations.quaternion_about_axis( -1*pi, (0,1,0))
     new_pose = [ee_trans[0],ee_trans[1],ee_trans[2],ee_rot[0],ee_rot[1],ee_rot[2],ee_rot[3]]
     # new_pose = [ee_trans[0],ee_trans[1],ee_trans[2],0, 0,0]
     robot_control.go_to_goal(new_pose)
+    robot_control.write_joint_pose()
     angle_shift -= angle_step
     angle += angle_step
     print('\n\n\n{}\n\n\n'.format(new_pose))
