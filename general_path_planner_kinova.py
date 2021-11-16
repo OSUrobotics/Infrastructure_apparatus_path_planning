@@ -51,7 +51,7 @@ class MoveRobot():
                 self.run_custom = int(third_arg)
             except Exception:
                 raise IOError("invalid second argument (must be 0 or 1)")
-            if(self.run_custom < 0 or self.run_custom > 1):
+            if(self.run_custom < 0 or self.run_custom > 2):
                 raise IOError("invalid second argument (must be 0 or 1)")
         else:
             raise IOError("invalid first argument (must be 0 or 1)")
@@ -404,7 +404,7 @@ class MoveRobot():
         main function for executing user commands.
         """
 
-        self.set_planner_type("RRT")
+        self.set_planner_type("RRT*")
 
         #run loaded joint angles
         if(self.mode == 0):
@@ -415,7 +415,7 @@ class MoveRobot():
             if(not os.path.exists(self.write_out_dir)):
                 os.makedirs(self.write_out_dir)
 
-            if(self.run_custom):
+            if(self.run_custom == 1):
                 # write custom path here
                 
                 # example:
@@ -429,8 +429,8 @@ class MoveRobot():
                 rospy.loginfo("finished going to home state")
                 self.write_joint_pose()
 
-                self.build_env(5) #safety walls
-                self.build_env(0)
+                # self.build_env(5) #safety walls
+                # self.build_env(0)
                 rospy.loginfo("putting palm to handle [point 1 of 3]")
                 current_point = [0.594897268928, (-0.00552424651151 + 0.0275), 1.08080196315, -0.0552241400824, 0.998162456525, -0.0237767228365, -0.0075280931829]
                 self.go_to_goal(current_point)
@@ -447,37 +447,37 @@ class MoveRobot():
                 current_point[0] = current_point[0] + .055
                 current_point[2] = current_point[2] - .08 
                 self.go_to_goal(current_point)
-                self.teardown_env(0)
+                # self.teardown_env(0)
                 self.write_joint_pose()
 
                 rospy.loginfo("closing gripper")
                 self.go_to_finger_joint_state([1, 0.9, 0.9])
                 self.write_joint_pose()
                
-                self.build_env(2)
+                # self.build_env(2)
                 rospy.loginfo("pulling drawer out [point 1 of 3]")
                 current_point[0] = current_point[0] - 0.04 
                 self.go_to_goal(current_point)
                 self.write_joint_pose()
                 
-                self.build_env(3)
+                # self.build_env(3)
                 rospy.loginfo("pulling drawer out [point 2 of 3]")
                 current_point[0] = current_point[0] - 0.04
                 self.go_to_goal(current_point)
                 self.write_joint_pose()
                 
-                self.build_env(4)
+                # self.build_env(4)
                 rospy.loginfo("pulling drawer out [point 3 of 3]")
                 current_point[0] = current_point[0] - 0.04
                 self.go_to_goal(current_point)
-                self.teardown_env(2)
+                # self.teardown_env(2)
                 self.write_joint_pose()
 
                 rospy.loginfo("releasing handle")
                 self.go_to_finger_joint_state([0.3, 0.3, 0.3])
                 self.write_joint_pose()
                
-                self.build_env(1)
+                # self.build_env(1)
                 rospy.loginfo("moving gripper from handle (test_point2)")
                 test_point = [ 0.55645217799, 0.0265633405959, 1.02602250364, -0.0552636649865, 0.998142031898, -0.0243654184542, -0.00804598493432]
                 self.go_to_goal(test_point)
@@ -486,12 +486,12 @@ class MoveRobot():
                 rospy.loginfo("going to home state")
                 self.go_to_arm_joint_state("Home")
                 rospy.loginfo("finished")
-                self.teardown_env(1)
-                self.teardown_env(3) #safety walls
+                # self.teardown_env(1)
+                # self.teardown_env(3) #safety walls
                 self.write_joint_pose()
 
             #capture joint poses on command
-            else:
+            elif self.run_custom == 0:
                 while(True):
                     user_in = raw_input("Enter 0 to record current joint angles. Enter 1 to exit (saves automatically): ")
                     if(user_in == "1"):
@@ -500,6 +500,8 @@ class MoveRobot():
                         self.write_joint_pose()
                     else:
                         print("Invalid user input")
+            else:
+                pass
 
 if __name__ == '__main__':
     """
@@ -520,6 +522,7 @@ if __name__ == '__main__':
         third arg: 
             - move robot (in rviz or real world w/ controller) and capture joint angles on command (0)
             - run custom code (1)
+            - use the code within other scripts (2)
         fourth arg:
             - name of csv file to be written to
 
