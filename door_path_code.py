@@ -10,6 +10,7 @@ from math import pi, sin, cos, tan
 from general_path_planner_kinova import MoveRobot
 import rospy
 import sys
+from datetime import datetime
 
 # different script touch off point to calibrate the arm to the door
 # saves the transform matrix to go from the  
@@ -32,8 +33,9 @@ import sys
 
 
 # rospy.init_node('door_path_planner', argv=sys.argv)
-
-robot_control = MoveRobot("1", "1", "2", "door_path2.csv")
+today = datetime.now()
+stamp = today.strftime("%d-%H:%M")
+robot_control = MoveRobot("1", "1", "2", "door_path2_{}.csv".format(stamp))
 
 R = 0.2365 # m, raduis of the circle
 
