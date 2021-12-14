@@ -9,7 +9,7 @@
 # referenced: kinova_path_planning.py by Nuha Nishat
 
 import rospy
-import sys, os
+import sys, os, inspect
 import time
 import numpy as np
 import copy
@@ -28,13 +28,20 @@ from moveit_msgs.srv import GetPlanningScene, ApplyPlanningScene
 class MoveRobot():
 
     def __init__(self, mode, environment, third_arg, csv_out=None):
+
+        # file paths
+        self.main_file_location = os.path.dirname(os.path.abspath(inspect.stack()[0][1]))
+        self.joint_angles_dir = self.main_file_location + "/joint_angles/"
+        if(not os.path.exists(self.joint_angles_dir)):
+            os.makedirs(self.joint_angles_dir)
+
         try:
             self.mode = int(mode)
         except Exception:
             raise IOError("invalid first argument (must be 0 or 1)")
         #read joint angles
         if(self.mode == 0):
-            self.csv_name = third_arg
+            self.csv_name = self.joint_angles_dir + third_arg
             self.joint_poses = []
             try:
                 f = open(self.csv_name, "r")
@@ -43,8 +50,7 @@ class MoveRobot():
                 raise IOError("invalid csv file name. Be sure the name includes the correct directory relative to this script")
         #write joint angles
         elif(self.mode == 1):
-            self.write_out_dir = "joint_angles/"
-            self.csv_name = self.write_out_dir + csv_out
+            self.csv_name = self.joint_angles_dir + csv_out
             try:
                 self.run_custom = int(third_arg)
             except Exception:
@@ -55,28 +61,32 @@ class MoveRobot():
             raise IOError("invalid first argument (must be 0 or 1)")
         
         # Initialize moveit commander and ros node for moveit
-        
+        try:
+            self.environment = int(environment)
+        except Exception:
+            raise IOError("invalid second argument (must be 0, 1, or 2)")
+
         # To read from redirected ROS Topic (Gazebo launch use)
-        if environment == "2":
+        if self.environment == 2:
             joint_state_topic = ['joint_states:=/j2s7s300/joint_states']
             moveit_commander.roscpp_initialize(joint_state_topic)
             rospy.init_node('move_kinova', anonymous=False)
             moveit_commander.roscpp_initialize(sys.argv)
         
         # For real robot launch use
-        elif environment == "0":
+        elif self.environment == 0:
             joint_state_topic = ['joint_states:=/j2s7s300_driver/out/joint_state']
             moveit_commander.roscpp_initialize(joint_state_topic)
             rospy.init_node('move_kinova', anonymous=False)
             moveit_commander.roscpp_initialize(sys.argv)
         
         # for virtual robot launch use
-        elif environment == "1":
+        elif self.environment == 1:
             moveit_commander.roscpp_initialize(sys.argv)
             rospy.init_node('move_kinova', anonymous=True)
         
         else:
-            raise IOError("invalid environemt value")
+            raise IOError("invalid second argument (must be 0, 1, or 2)")
 
         # Define robot using RobotCommander. Provided robot info such as
         # kinematic model and current joint state
@@ -105,12 +115,9 @@ class MoveRobot():
         self.rate = rospy.Rate(10)
 
         self.move_group.allow_replanning(1)
-        
+
         #how much to round joint angles
         self.joint_angle_rounded = 2 
-        
-        #run main
-        self.main()
 
     def set_planner_type(self, planner_name):
         if planner_name == "RRT":
@@ -216,31 +223,7 @@ class MoveRobot():
         can be custom or basic meshes
         """
         #example:
-        if path == 0:
-            handle_mesh = "/home/sogol/kinova_Ws/src/kinova-ros/kinova_description/meshes/drawer_Link.STL"
-            handle_pose = PoseStamped()
-            handle_pose.header.frame_id = self.robot.get_planning_frame()
-            handle_pose.pose.position.x = 0.66
-            handle_pose.pose.position.y = -0.18
-            handle_pose.pose.position.z = 0.67
-            self.scene.add_mesh('handle', handle_pose, handle_mesh)
-            wall_pose = PoseStamped()
-            wall_pose.header.frame_id = self.robot.get_planning_frame()
-            wall_pose.pose.position.x = 0.82
-            wall_pose.pose.position.y = 0.0
-            wall_pose.pose.position.z = 0.85
-            self.scene.add_box('drawer_face', wall_pose, (.01, 1.0, 1.0))
-
-        elif path == 1:
-            handle_mesh = "/home/sogol/kinova_Ws/src/kinova-ros/kinova_description/meshes/drawer_Link.STL"
-            handle_pose = PoseStamped()
-            handle_pose.header.frame_id = self.robot.get_planning_frame()
-            handle_pose.pose.position.x = 0.66 - 0.12
-            handle_pose.pose.position.y = -0.18
-            handle_pose.pose.position.z = 0.67
-            self.scene.add_mesh('handle', handle_pose, handle_mesh)
-
-        elif path == 2:
+        if path == 2:
             wall_pose = PoseStamped()
             wall_pose.header.frame_id = self.robot.get_planning_frame()
             wall_pose.pose.position.x = 0.77
@@ -319,13 +302,10 @@ class MoveRobot():
         """
         despawn collision models.
         """
+
         #example:
         if path == 0:
             self.scene.remove_world_object('drawer_face')
-            self.scene.remove_world_object('handle')
-        
-        elif path == 1:
-            self.scene.remove_world_object('handle')
         
         elif path == 2:
             self.scene.remove_world_object('drawer_face')
@@ -334,7 +314,6 @@ class MoveRobot():
             self.scene.remove_world_object('wall_b')
             self.scene.remove_world_object('wall_t')
 
-        #remove safety walls
         elif path == 3:
             self.scene.remove_world_object('safety_l')
             self.scene.remove_world_object('safety_r')
@@ -397,7 +376,7 @@ class MoveRobot():
                 self.go_to_finger_joint_state(next_gripper_joint_angles)
         self.joint_poses = []
 
-    def main(self):
+    def Run(self):
         """
         main function for executing user commands.
         """
@@ -410,8 +389,6 @@ class MoveRobot():
         
         #record joint angles
         elif(self.mode == 1):
-            if(not os.path.exists(self.write_out_dir)):
-                os.makedirs(self.write_out_dir)
 
             if(self.run_custom):
                 # write custom path here
@@ -427,15 +404,14 @@ class MoveRobot():
                 rospy.loginfo("finished going to home state")
                 self.write_joint_pose()
 
-                self.build_env(5) #safety walls
-                self.build_env(0)
+                self.build_env(5)
                 rospy.loginfo("putting palm to handle [point 1 of 3]")
                 current_point = [0.594897268928, (-0.00552424651151 + 0.0275), 1.08080196315, -0.0552241400824, 0.998162456525, -0.0237767228365, -0.0075280931829]
                 self.go_to_goal(current_point)
                 self.write_joint_pose()
                 
                 rospy.loginfo("putting palm to handle [point 2 of 3]")
-                self.go_to_finger_joint_state([0.4, 0.4, 0.4]) #close fingers a little
+                self.go_to_finger_joint_state([0.4, 0.4, 0.4])
                 current_point[0] = current_point[0] + .055
                 current_point[2] = current_point[2] - .08
                 self.go_to_goal(current_point)
@@ -475,7 +451,6 @@ class MoveRobot():
                 self.go_to_finger_joint_state([0.3, 0.3, 0.3])
                 self.write_joint_pose()
                
-                self.build_env(1)
                 rospy.loginfo("moving gripper from handle (test_point2)")
                 test_point = [ 0.55645217799, 0.0265633405959, 1.02602250364, -0.0552636649865, 0.998142031898, -0.0243654184542, -0.00804598493432]
                 self.go_to_goal(test_point)
@@ -484,8 +459,7 @@ class MoveRobot():
                 rospy.loginfo("going to home state")
                 self.go_to_arm_joint_state("Home")
                 rospy.loginfo("finished")
-                self.teardown_env(1)
-                self.teardown_env(3) #safety walls
+                self.teardown_env(3)
                 self.write_joint_pose()
 
             #capture joint poses on command
@@ -523,10 +497,13 @@ if __name__ == '__main__':
 
     Notes:
         - gripper joint values will return as 0.0 until they are actually moved for the first time
+        - all joint angle files are read/written from the joint_angles folder
     """
     if(len(sys.argv) == 4):
-        MoveRobot(sys.argv[1], sys.argv[2], sys.argv[3])
+        controller = MoveRobot(sys.argv[1], sys.argv[2], sys.argv[3])
+        controller.Run()
     elif(len(sys.argv) == 5):
-        MoveRobot(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+        controller = MoveRobot(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+        controller.Run()
     else:
         raise IOError("Invalid number of arguments")
