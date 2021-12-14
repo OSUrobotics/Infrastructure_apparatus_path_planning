@@ -3,10 +3,8 @@
 # Author: Ryan Roberts
 # Email: roberyan@oregonstate.edu
 # Date: 10/21
-#
 # 
 # script for capturing/executing joint poses on kinova arm either virtually or in real world.
-#
 #
 # referenced: kinova_path_planning.py by Nuha Nishat
 
