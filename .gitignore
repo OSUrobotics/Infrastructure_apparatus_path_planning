@@ -51,4 +51,4 @@ qtcreator-*
 CATKIN_IGNORE
 
 # generated folders
-# joint_angles/
+joint_angles/
